@@ -31,9 +31,7 @@ export function PanoramaViewer({ panoramas }: PanoramaViewerProps) {
   const viewerContainerRef = useRef<HTMLDivElement>(null);
 
   // Use real 360 panoramas for demo (falling back to sample panos if none provided)
-  const activePanoramas = panoramas.length > 0 && panoramas[0].url.includes('pannellum') 
-    ? panoramas 
-    : REAL_360_PANORAMAS;
+  const activePanoramas = panoramas.length > 0 ? panoramas : REAL_360_PANORAMAS;
 
   const initViewer = useCallback((index: number) => {
     if (!viewerContainerRef.current) return;

@@ -1,20 +1,30 @@
-import { useState, useMemo, useRef, useCallback } from 'react';
-import { Header } from './components/Header';
-import { HeroSection } from './components/HeroSection';
-import { SearchFilters, type Filters } from './components/SearchFilters';
-import { PropertyCard } from './components/PropertyCard';
-import { PropertyDetail } from './components/PropertyDetail';
-import { Footer } from './components/Footer';
-import { properties } from './data/properties';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import { Header } from './Header';
+import { HeroSection } from './HeroSection';
+import { SearchFilters, type Filters } from './SearchFilters';
+import { PropertyCard } from './PropertyCard';
+import { PropertyDetail } from './PropertyDetail';
+import { Footer } from './Footer';
+import { properties as seedProperties, type Property } from './data/properties';
 import { TrendingUp, Award, Clock, Search } from 'lucide-react';
+import { supabase } from './supabaseClient';
+import { ListPropertyModal } from './ListPropertyModal';
+import { AuthModal } from './AuthModal';
 
-type Page = 'home' | 'detail';
+type Page = 'home' | 'detail' | 'my-listings';
 
 export function App() {
   const [page, setPage] = useState<Page>('home');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [sortBy, setSortBy] = useState<string>('featured');
+  const [session, setSession] = useState<Session | null>(null);
+  const [profileRole, setProfileRole] = useState<'buyer' | 'seller' | 'admin' | null>(null);
+  const [dbProperties, setDbProperties] = useState<Property[]>([]);
+  const [isListModalOpen, setIsListModalOpen] = useState(false);
+  const [editingProperty, setEditingProperty] = useState<Property | null>(null);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [filters, setFilters] = useState<Filters>({
     search: '',
     city: '',
@@ -28,12 +38,147 @@ export function App() {
 
   const filtersRef = useRef<HTMLDivElement>(null);
 
+  const isSeller = profileRole === 'seller' || profileRole === 'admin';
+  const allProperties = useMemo(() => [...dbProperties, ...seedProperties], [dbProperties]);
+  const availableCities = useMemo(
+    () => Array.from(new Set(allProperties.map((p) => p.city))).sort(),
+    [allProperties]
+  );
+  const availablePropertyTypes = useMemo(
+    () => Array.from(new Set(allProperties.map((p) => p.propertyType))).sort(),
+    [allProperties]
+  );
+  const myListings = useMemo(
+    () => dbProperties.filter((property) => property.sellerId === session?.user?.id),
+    [dbProperties, session]
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (isMounted) setSession(data.session || null);
+    });
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+    });
+
+    return () => {
+      isMounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!session?.user) {
+        setProfileRole(null);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      if (error) {
+        setProfileRole(null);
+        return;
+      }
+
+      if (!data) {
+        await supabase.from('profiles').insert({ id: session.user.id, role: 'buyer' });
+        setProfileRole('buyer');
+        return;
+      }
+
+      setProfileRole(data.role);
+    };
+
+    loadProfile();
+  }, [session]);
+
+  useEffect(() => {
+    const pendingRole = localStorage.getItem('pendingRole');
+    if (!pendingRole || !session?.user) return;
+
+    supabase
+      .from('profiles')
+      .update({ role: pendingRole })
+      .eq('id', session.user.id)
+      .then(() => {
+        localStorage.removeItem('pendingRole');
+        setProfileRole(pendingRole as 'buyer' | 'seller');
+      });
+  }, [session]);
+
+  useEffect(() => {
+    const loadProperties = async () => {
+      const { data: propertyRows } = await supabase
+        .from('properties')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!propertyRows) {
+        setDbProperties([]);
+        return;
+      }
+
+      const { data: photoRows } = await supabase
+        .from('property_photos')
+        .select('*');
+
+      const photosByProperty = (photoRows || []).reduce<Record<string, { url: string; label: string }[]>>(
+        (acc, row) => {
+          if (!acc[row.property_id]) acc[row.property_id] = [];
+          acc[row.property_id].push({ url: row.url, label: row.label });
+          return acc;
+        },
+        {}
+      );
+
+      const mapped = propertyRows.map((row: any) => ({
+        id: row.id,
+        sellerId: row.seller_id,
+        title: row.title,
+        address: row.address,
+        city: row.city,
+        state: row.state,
+        zip: row.zip,
+        price: row.price,
+        listingType: row.listing_type,
+        propertyType: row.property_type,
+        bedrooms: row.bedrooms,
+        bathrooms: row.bathrooms,
+        sqft: row.sqft,
+        yearBuilt: row.year_built,
+        isNew: row.is_new,
+        isFeatured: row.is_featured,
+        description: row.description,
+        features: row.features || [],
+        panoramas: photosByProperty[row.id] || [],
+        thumbnailUrl: row.thumbnail_url || undefined,
+        matterportUrl: row.matterport_url || '',
+        agent: {
+          name: row.agent_name,
+          phone: row.agent_phone,
+          email: row.agent_email,
+          photo: row.agent_photo,
+        },
+      }));
+
+      setDbProperties(mapped);
+    };
+
+    loadProperties();
+  }, []);
+
   const handleSearchFocus = useCallback(() => {
     filtersRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
   const filteredProperties = useMemo(() => {
-    let result = properties.filter((p) => {
+    let result = allProperties.filter((p) => {
       // Search
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
@@ -96,7 +241,7 @@ export function App() {
     }
 
     return result;
-  }, [filters, sortBy]);
+  }, [filters, sortBy, allProperties]);
 
   const handleSelectProperty = (id: string) => {
     setSelectedPropertyId(id);
@@ -106,17 +251,38 @@ export function App() {
 
   const handleNavigate = (target: Page) => {
     setPage(target);
-    if (target === 'home') {
+    if (target !== 'detail') {
       setSelectedPropertyId(null);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const selectedProperty = properties.find((p) => p.id === selectedPropertyId);
+  const handleSignIn = async () => {
+    setIsAuthOpen(true);
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const openCreateListing = () => {
+    setEditingProperty(null);
+    setIsListModalOpen(true);
+  };
+
+  const selectedProperty = allProperties.find((p) => p.id === selectedPropertyId);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Header onNavigate={handleNavigate} currentPage={page} />
+      <Header
+        onNavigate={handleNavigate}
+        currentPage={page}
+        isSignedIn={!!session}
+        isSeller={isSeller}
+        onSignIn={handleSignIn}
+        onSignOut={handleSignOut}
+        onListProperty={openCreateListing}
+      />
 
       {page === 'home' ? (
         <>
@@ -132,6 +298,8 @@ export function App() {
                 showAdvanced={showAdvancedFilters}
                 onToggleAdvanced={() => setShowAdvancedFilters(!showAdvancedFilters)}
                 resultCount={filteredProperties.length}
+                cities={availableCities}
+                propertyTypes={availablePropertyTypes}
               />
             </div>
 
@@ -164,7 +332,7 @@ export function App() {
                   <h3 className="text-lg font-bold text-gray-900">Featured Properties</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {properties
+                  {allProperties
                     .filter((p) => p.isFeatured)
                     .slice(0, 2)
                     .map((property) => (
@@ -259,9 +427,86 @@ export function App() {
 
           <Footer />
         </>
+      ) : page === 'my-listings' ? (
+        <>
+          <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 w-full py-10">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+              <div>
+                <h2 className="text-3xl font-bold text-gray-900">My Listings</h2>
+                <p className="text-gray-500">Manage the properties you have listed.</p>
+              </div>
+              {isSeller && (
+                <button
+                  onClick={openCreateListing}
+                  className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
+                >
+                  List a Property
+                </button>
+              )}
+            </div>
+
+            {!session?.user ? (
+              <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+                <p className="text-gray-600">Sign in to view your listings.</p>
+              </div>
+            ) : !isSeller ? (
+              <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+                <p className="text-gray-600">Only sellers can access listings.</p>
+              </div>
+            ) : myListings.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {myListings.map((property) => (
+                  <div key={property.id} className="relative group">
+                    <PropertyCard
+                      property={property}
+                      onSelect={handleSelectProperty}
+                    />
+                    <button
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setEditingProperty(property);
+                        setIsListModalOpen(false);
+                      }}
+                      className="absolute top-4 right-4 px-3 py-1.5 bg-white/90 text-gray-700 text-xs font-semibold rounded-lg shadow-lg border border-gray-100 hover:bg-white"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
+                <p className="text-gray-600">You have not listed any properties yet.</p>
+              </div>
+            )}
+          </main>
+
+          <Footer />
+        </>
       ) : page === 'detail' && selectedProperty ? (
         <PropertyDetail property={selectedProperty} onBack={() => handleNavigate('home')} />
       ) : null}
+
+      {session?.user && (
+        <ListPropertyModal
+          isOpen={isListModalOpen || !!editingProperty}
+          userId={session.user.id}
+          onClose={() => {
+            setIsListModalOpen(false);
+            setEditingProperty(null);
+          }}
+          onCreated={(property) => setDbProperties((prev) => [property, ...prev])}
+          onUpdated={(property) =>
+            setDbProperties((prev) =>
+              prev.map((item) => (item.id === property.id ? property : item))
+            )
+          }
+          mode={editingProperty ? 'edit' : 'create'}
+          initialProperty={editingProperty}
+        />
+      )}
+
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
     </div>
   );
 }

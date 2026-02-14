@@ -2,11 +2,16 @@ import { Box, Menu, X, Heart, User } from 'lucide-react';
 import { useState } from 'react';
 
 interface HeaderProps {
-  onNavigate: (page: 'home' | 'detail') => void;
+  onNavigate: (page: 'home' | 'detail' | 'my-listings') => void;
   currentPage: string;
+  isSignedIn: boolean;
+  isSeller: boolean;
+  onSignIn: () => void;
+  onSignOut: () => void;
+  onListProperty: () => void;
 }
 
-export function Header({ onNavigate, currentPage }: HeaderProps) {
+export function Header({ onNavigate, currentPage, isSignedIn, isSeller, onSignIn, onSignOut, onListProperty }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -39,18 +44,46 @@ export function Header({ onNavigate, currentPage }: HeaderProps) {
             >
               Browse Properties
             </button>
+            {isSeller && (
+              <button
+                onClick={() => onNavigate('my-listings')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  currentPage === 'my-listings' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                My Listings
+              </button>
+            )}
             <button className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-1.5">
               <Heart size={15} />
               Saved
             </button>
             <div className="w-px h-6 bg-gray-200 mx-2" />
-            <button className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-1.5">
-              <User size={15} />
-              Sign In
-            </button>
-            <button className="ml-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md shadow-blue-200">
-              List Property
-            </button>
+            {isSignedIn ? (
+              <button
+                onClick={onSignOut}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+              >
+                <User size={15} />
+                Sign Out
+              </button>
+            ) : (
+              <button
+                onClick={onSignIn}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+              >
+                <User size={15} />
+                Sign In
+              </button>
+            )}
+            {isSeller && (
+              <button
+                onClick={onListProperty}
+                className="ml-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md shadow-blue-200"
+              >
+                List Property
+              </button>
+            )}
           </nav>
 
           {/* Mobile menu toggle */}
@@ -71,15 +104,40 @@ export function Header({ onNavigate, currentPage }: HeaderProps) {
             >
               Browse Properties
             </button>
+            {isSeller && (
+              <button
+                onClick={() => { onNavigate('my-listings'); setMobileMenuOpen(false); }}
+                className="block w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                My Listings
+              </button>
+            )}
             <button className="block w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
               Saved Properties
             </button>
-            <button className="block w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
-              Sign In
-            </button>
-            <button className="block w-full mt-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-medium rounded-xl">
-              List Property
-            </button>
+            {isSignedIn ? (
+              <button
+                onClick={onSignOut}
+                className="block w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Sign Out
+              </button>
+            ) : (
+              <button
+                onClick={onSignIn}
+                className="block w-full text-left px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Sign In
+              </button>
+            )}
+            {isSeller && (
+              <button
+                onClick={onListProperty}
+                className="block w-full mt-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-medium rounded-xl"
+              >
+                List Property
+              </button>
+            )}
           </div>
         )}
       </div>

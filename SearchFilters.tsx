@@ -1,5 +1,4 @@
 import { Search, SlidersHorizontal, X } from 'lucide-react';
-import { cities, propertyTypes } from '../data/properties';
 
 export interface Filters {
   search: string;
@@ -18,9 +17,19 @@ interface SearchFiltersProps {
   showAdvanced: boolean;
   onToggleAdvanced: () => void;
   resultCount: number;
+  cities: string[];
+  propertyTypes: string[];
 }
 
-export function SearchFilters({ filters, onFiltersChange, showAdvanced, onToggleAdvanced, resultCount }: SearchFiltersProps) {
+export function SearchFilters({
+  filters,
+  onFiltersChange,
+  showAdvanced,
+  onToggleAdvanced,
+  resultCount,
+  cities,
+  propertyTypes,
+}: SearchFiltersProps) {
   const update = (key: keyof Filters, value: string) => {
     onFiltersChange({ ...filters, [key]: value });
   };

@@ -3,7 +3,7 @@ import {
   ArrowLeft, Bed, Bath, Maximize, Calendar, MapPin, Share2, Heart,
   Phone, Mail, CheckCircle2, Box, Eye, Home, Star
 } from 'lucide-react';
-import type { Property } from '../data/properties';
+import type { Property } from './data/properties';
 import { PanoramaViewer } from './PanoramaViewer';
 import { MatterportEmbed } from './MatterportEmbed';
 

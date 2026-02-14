@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Bed, Bath, Maximize, MapPin, Heart, Eye, Box } from 'lucide-react';
-import type { Property } from '../data/properties';
+import type { Property } from './data/properties';
 
 interface PropertyCardProps {
   property: Property;
@@ -27,7 +27,7 @@ export function PropertyCard({ property, onSelect }: PropertyCardProps) {
           <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse" />
         )}
         <img
-          src={property.panoramas[0].url}
+          src={property.thumbnailUrl || property.panoramas[0].url}
           alt={property.title}
           className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
           onLoad={() => setImageLoaded(true)}
