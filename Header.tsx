@@ -28,7 +28,7 @@ export function Header({ onNavigate, currentPage, isSignedIn, isSeller, onSignIn
             </div>
             <div>
               <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                PanoProperty
+                3ainly
               </span>
               <span className="hidden sm:block text-[10px] text-gray-400 -mt-1 font-medium tracking-wider">360° & 3D IMMERSIVE</span>
             </div>
