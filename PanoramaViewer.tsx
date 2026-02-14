@@ -208,7 +208,7 @@ export function PanoramaViewer({ panoramas }: PanoramaViewerProps) {
         )}
 
         {/* 360° Badge */}
-        <div className="absolute top-4 left-4 z-20">
+        <div className="absolute top-4 left-4 z-20 hidden">
           <div className="bg-black/70 backdrop-blur-md text-white px-4 py-2 rounded-full flex items-center gap-3 text-sm font-medium shadow-lg">
             <div className="relative">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-pulse">
@@ -234,7 +234,7 @@ export function PanoramaViewer({ panoramas }: PanoramaViewerProps) {
         <div className="absolute top-4 right-4 z-20 flex gap-2">
           <button
             onClick={() => setAutoRotate(!autoRotate)}
-            className={`p-2.5 rounded-xl backdrop-blur-md transition-all duration-200 ${
+            className={`p-2.5 rounded-xl backdrop-blur-md transition-all duration-200 hidden ${
               autoRotate 
                 ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' 
                 : 'bg-black/50 text-white hover:bg-black/70'
@@ -271,7 +271,7 @@ export function PanoramaViewer({ panoramas }: PanoramaViewerProps) {
         )}
 
         {/* Instructions */}
-        <div className="absolute bottom-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <div className="absolute bottom-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 hidden">
           <div className="bg-black/60 backdrop-blur-md text-white text-xs px-4 py-2 rounded-full flex items-center gap-3">
             <span className="flex items-center gap-1">
               <span className="text-lg">🖱️</span> Drag to look around
