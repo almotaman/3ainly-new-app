@@ -25,6 +25,7 @@ export function App() {
   const [isListModalOpen, setIsListModalOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [savedPropertyIds, setSavedPropertyIds] = useState<string[]>([]);
   const [filters, setFilters] = useState<Filters>({
     search: '',
     city: '',
@@ -72,6 +73,7 @@ export function App() {
     const loadProfile = async () => {
       if (!session?.user) {
         setProfileRole(null);
+        setSavedPropertyIds([]);
         return;
       }
 
@@ -93,6 +95,14 @@ export function App() {
       }
 
       setProfileRole(data.role);
+
+      // Load saved properties
+      const { data: savedProps } = await supabase
+        .from('saved_properties')
+        .select('property_id')
+        .eq('user_id', session.user.id);
+
+      setSavedPropertyIds(savedProps?.map(s => s.property_id) || []);
     };
 
     loadProfile();
@@ -270,6 +280,36 @@ export function App() {
     setIsListModalOpen(true);
   };
 
+  const handleToggleSave = async (propertyId: string) => {
+    if (!session?.user) {
+      setIsAuthOpen(true);
+      return;
+    }
+
+    const isSaved = savedPropertyIds.includes(propertyId);
+
+    if (isSaved) {
+      // Remove from saved
+      await supabase
+        .from('saved_properties')
+        .delete()
+        .eq('user_id', session.user.id)
+        .eq('property_id', propertyId);
+
+      setSavedPropertyIds(prev => prev.filter(id => id !== propertyId));
+    } else {
+      // Add to saved
+      await supabase
+        .from('saved_properties')
+        .insert({
+          user_id: session.user.id,
+          property_id: propertyId,
+        });
+
+      setSavedPropertyIds(prev => [...prev, propertyId]);
+    }
+  };
+
   const selectedProperty = allProperties.find((p) => p.id === selectedPropertyId);
 
   return (
@@ -340,7 +380,7 @@ export function App() {
                         <div className="absolute -top-2 -right-2 z-10 w-8 h-8 bg-amber-400 rounded-full flex items-center justify-center shadow-lg">
                           <Award size={16} className="text-white" />
                         </div>
-                        <PropertyCard property={property} onSelect={handleSelectProperty} />
+                        <PropertyCard property={property} onSelect={handleSelectProperty} isSaved={savedPropertyIds.includes(property.id)} onToggleSave={handleToggleSave} />
                       </div>
                     ))}
                 </div>
@@ -355,6 +395,8 @@ export function App() {
                     key={property.id}
                     property={property}
                     onSelect={handleSelectProperty}
+                    isSaved={savedPropertyIds.includes(property.id)}
+                    onToggleSave={handleToggleSave}
                   />
                 ))}
               </div>
@@ -460,6 +502,8 @@ export function App() {
                     <PropertyCard
                       property={property}
                       onSelect={handleSelectProperty}
+                      isSaved={savedPropertyIds.includes(property.id)}
+                      onToggleSave={handleToggleSave}
                     />
                     <button
                       onClick={(event) => {

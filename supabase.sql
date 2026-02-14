@@ -174,3 +174,22 @@ create policy "Authenticated upload property thumbnails" on storage.objects
 
 create policy "Owner delete property thumbnails" on storage.objects
   for delete using (bucket_id = 'property-thumbnails' and auth.uid() = owner);
+
+create table if not exists public.saved_properties (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references public.profiles(id) on delete cascade,
+  property_id uuid references public.properties(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique(user_id, property_id)
+);
+
+alter table public.saved_properties enable row level security;
+
+create policy "Users can view own saved properties" on public.saved_properties
+  for select using (auth.uid() = user_id);
+
+create policy "Users can save properties" on public.saved_properties
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can unsave properties" on public.saved_properties
+  for delete using (auth.uid() = user_id);

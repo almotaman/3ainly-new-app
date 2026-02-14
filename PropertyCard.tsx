@@ -1,15 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Bed, Bath, Maximize, MapPin, Heart, Eye, Box } from 'lucide-react';
 import type { Property } from './data/properties';
 
 interface PropertyCardProps {
   property: Property;
   onSelect: (id: string) => void;
+  isSaved?: boolean;
+  onToggleSave?: (propertyId: string) => void;
 }
 
-export function PropertyCard({ property, onSelect }: PropertyCardProps) {
-  const [isLiked, setIsLiked] = useState(false);
+export function PropertyCard({ property, onSelect, isSaved = false, onToggleSave }: PropertyCardProps) {
+  const [isLiked, setIsLiked] = useState(isSaved);
   const [imageLoaded, setImageLoaded] = useState(false);
+
+  useEffect(() => {
+    setIsLiked(isSaved);
+  }, [isSaved]);
 
   const formatPrice = (price: number, type: string) => {
     if (type === 'rent') return `$${price.toLocaleString()}/mo`;
@@ -61,7 +67,11 @@ export function PropertyCard({ property, onSelect }: PropertyCardProps) {
 
         {/* Like button */}
         <button
-          onClick={(e) => { e.stopPropagation(); setIsLiked(!isLiked); }}
+          onClick={(e) => { 
+            e.stopPropagation(); 
+            setIsLiked(!isLiked);
+            onToggleSave?.(property.id);
+          }}
           className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur-sm rounded-full hover:bg-white transition-colors shadow-lg"
         >
           <Heart
