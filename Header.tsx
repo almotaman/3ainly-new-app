@@ -9,9 +9,10 @@ interface HeaderProps {
   onSignIn: () => void;
   onSignOut: () => void;
   onListProperty: () => void;
+  onBecomeSeller?: () => void;
 }
 
-export function Header({ onNavigate, currentPage, isSignedIn, isSeller, onSignIn, onSignOut, onListProperty }: HeaderProps) {
+export function Header({ onNavigate, currentPage, isSignedIn, isSeller, onSignIn, onSignOut, onListProperty, onBecomeSeller }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
@@ -74,6 +75,14 @@ export function Header({ onNavigate, currentPage, isSignedIn, isSeller, onSignIn
               >
                 <User size={15} />
                 Sign In
+              </button>
+            )}
+            {!isSeller && isSignedIn && onBecomeSeller && (
+              <button
+                onClick={onBecomeSeller}
+                className="ml-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-medium rounded-xl hover:opacity-90 transition-opacity shadow-md shadow-purple-200 animate-pulse"
+              >
+                🚀 Become a Seller
               </button>
             )}
             {isSeller && (

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   ArrowLeft, Bed, Bath, Maximize, Calendar, MapPin, Share2, Heart,
-  Phone, Mail, CheckCircle2, Box, Eye, Home, Star
+  Phone, Mail, CheckCircle2, Box, Eye, Home, Star, Copy, Check
 } from 'lucide-react';
 import type { Property } from './data/properties';
 import { PanoramaViewer } from './PanoramaViewer';
@@ -10,16 +10,33 @@ import { MatterportEmbed } from './MatterportEmbed';
 interface PropertyDetailProps {
   property: Property;
   onBack: () => void;
+  onViewSellerProfile?: (sellerId: string) => void;
 }
 
-export function PropertyDetail({ property, onBack }: PropertyDetailProps) {
+export function PropertyDetail({ property, onBack, onViewSellerProfile }: PropertyDetailProps) {
   const [activeTab, setActiveTab] = useState<'panorama' | 'matterport'>('panorama');
   const [isLiked, setIsLiked] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
+  const [shareNotification, setShareNotification] = useState(false);
 
   const formatPrice = (price: number, type: string) => {
     if (type === 'rent') return `$${price.toLocaleString()}/mo`;
     return `$${price.toLocaleString()}`;
+  };
+
+  const handleShare = async () => {
+    const shareUrl = new URL(window.location.href);
+    shareUrl.searchParams.set('property', property.id);
+    shareUrl.searchParams.delete('seller');
+    const shareLink = shareUrl.toString();
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setShareNotification(true);
+      setTimeout(() => setShareNotification(false), 3000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+      prompt('Copy this link to share the property:', shareLink);
+    }
   };
 
   return (
@@ -43,9 +60,19 @@ export function PropertyDetail({ property, onBack }: PropertyDetailProps) {
             >
               <Heart size={18} className={isLiked ? 'fill-current' : ''} />
             </button>
-            <button className="p-2.5 rounded-xl border bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100 transition-all">
-              <Share2 size={18} />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={handleShare}
+                className="p-2.5 rounded-xl border bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100 transition-all"
+              >
+                {shareNotification ? <Check size={18} className="text-green-500" /> : <Share2 size={18} />}
+              </button>
+              {shareNotification && (
+                <div className="absolute -bottom-8 right-0 bg-green-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+                  Link copied!
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -298,6 +325,17 @@ export function PropertyDetail({ property, onBack }: PropertyDetailProps) {
                 </div>
               )}
             </div>
+
+            {/* View seller's other properties button */}
+            {property.sellerId && onViewSellerProfile && (
+              <button
+                onClick={() => onViewSellerProfile(property.sellerId!)}
+                className="w-full py-3 px-4 bg-purple-50 border border-purple-200 text-purple-700 font-medium rounded-xl hover:bg-purple-100 transition-colors text-sm flex items-center justify-center gap-2"
+              >
+                <Home size={16} />
+                View All Properties from This Seller
+              </button>
+            )}
 
             {/* Immersive features callout */}
             <div className="bg-gradient-to-br from-blue-600 to-purple-700 rounded-2xl p-6 text-white">

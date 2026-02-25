@@ -90,17 +90,17 @@ export function PanoramaViewer({ panoramas }: PanoramaViewerProps) {
         autoRotate: autoRotate ? -2 : 0,
         autoRotateInactivityDelay: 1000,
         compass: false,
-        showZoomCtrl: true,
+        showZoomCtrl: false,
         showFullscreenCtrl: false,
-        mouseZoom: true,
-        keyboardZoom: true,
+        mouseZoom: false,
+        keyboardZoom: false,
         draggable: true,
         friction: 0.15,
         yaw: 0,
         pitch: 0,
         hfov: 100,
-        minHfov: 50,
-        maxHfov: 120,
+        minHfov: 100,
+        maxHfov: 100,
         strings: {
           loadingLabel: 'Loading 360° View...'
         }

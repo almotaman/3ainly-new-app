@@ -15,6 +15,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showRolePicker, setShowRolePicker] = useState(false);
 
   if (!isOpen) return null;
 
@@ -25,6 +26,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setFullName('');
     setError(null);
     setIsSubmitting(false);
+    setShowRolePicker(false);
   };
 
   const handleClose = () => {
@@ -32,11 +34,22 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     onClose();
   };
 
-  const handleGoogle = async () => {
+  const handleGoogleClick = () => {
+    setShowRolePicker(true);
+  };
+
+  const handleGoogle = async (selectedRole: 'buyer' | 'seller') => {
     setError(null);
+    setShowRolePicker(false);
+    
+    // Save role so we can use it after Google redirects back
+    localStorage.setItem('pendingRole', selectedRole);
+    
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { 
+        redirectTo: window.location.origin
+      },
     });
   };
 
@@ -117,18 +130,52 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
             </div>
           )}
 
-          <button
-            onClick={handleGoogle}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium"
-          >
-            Continue with Google
-          </button>
+          {showRolePicker ? (
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-gray-700 text-center">What brings you here?</p>
+              <button
+                onClick={() => handleGoogle('buyer')}
+                className="w-full px-4 py-4 rounded-xl border-2 border-blue-200 bg-blue-50 text-gray-900 font-medium hover:border-blue-400 transition-all"
+              >
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-2xl">🏠</span>
+                  <span className="font-bold">I'm Looking to Buy or Rent</span>
+                  <span className="text-xs text-gray-500">Browse and explore properties</span>
+                </div>
+              </button>
+              <button
+                onClick={() => handleGoogle('seller')}
+                className="w-full px-4 py-4 rounded-xl border-2 border-purple-200 bg-purple-50 text-gray-900 font-medium hover:border-purple-400 transition-all"
+              >
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-2xl">💼</span>
+                  <span className="font-bold">I'm Selling Properties</span>
+                  <span className="text-xs text-gray-500">List and manage your properties</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setShowRolePicker(false)}
+                className="w-full text-sm text-gray-500 hover:text-gray-700"
+              >
+                ← Back
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={handleGoogleClick}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+              >
+                Continue with Google
+              </button>
 
-          <div className="flex items-center gap-3 text-xs text-gray-400">
-            <div className="h-px flex-1 bg-gray-200" />
-            OR
-            <div className="h-px flex-1 bg-gray-200" />
-          </div>
+              <div className="flex items-center gap-3 text-xs text-gray-400">
+                <div className="h-px flex-1 bg-gray-200" />
+                OR
+                <div className="h-px flex-1 bg-gray-200" />
+              </div>
+            </>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'signup' && (

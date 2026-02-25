@@ -5,6 +5,7 @@ import { HeroSection } from './HeroSection';
 import { SearchFilters, type Filters } from './SearchFilters';
 import { PropertyCard } from './PropertyCard';
 import { PropertyDetail } from './PropertyDetail';
+import { SellerProfile } from './SellerProfile';
 import { Footer } from './Footer';
 import { properties as seedProperties, type Property } from './data/properties';
 import { TrendingUp, Award, Clock, Search } from 'lucide-react';
@@ -12,15 +13,16 @@ import { supabase } from './supabaseClient';
 import { ListPropertyModal } from './ListPropertyModal';
 import { AuthModal } from './AuthModal';
 
-type Page = 'home' | 'detail' | 'my-listings';
+type Page = 'home' | 'detail' | 'my-listings' | 'seller-profile';
 
 export function App() {
   const [page, setPage] = useState<Page>('home');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
+  const [selectedSellerId, setSelectedSellerId] = useState<string | null>(null);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [sortBy, setSortBy] = useState<string>('featured');
   const [session, setSession] = useState<Session | null>(null);
-  const [profileRole, setProfileRole] = useState<'buyer' | 'seller' | 'admin' | null>(null);
+  const [profileRole, setProfileRole] = useState<'buyer' | 'seller' | null>(null);
   const [dbProperties, setDbProperties] = useState<Property[]>([]);
   const [isListModalOpen, setIsListModalOpen] = useState(false);
   const [editingProperty, setEditingProperty] = useState<Property | null>(null);
@@ -39,7 +41,8 @@ export function App() {
 
   const filtersRef = useRef<HTMLDivElement>(null);
 
-  const isSeller = profileRole === 'seller' || profileRole === 'admin';
+  const isSeller = profileRole === 'seller';
+  const isApprovedSeller = isSeller; // For now, sellers are auto-approved
   const allProperties = useMemo(() => [...dbProperties, ...seedProperties], [dbProperties]);
   const availableCities = useMemo(
     () => Array.from(new Set(allProperties.map((p) => p.city))).sort(),
@@ -183,6 +186,21 @@ export function App() {
     loadProperties();
   }, []);
 
+  // Check URL parameters for shareable links
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sellerId = params.get('seller');
+    const propertyId = params.get('property');
+
+    if (sellerId) {
+      setSelectedSellerId(sellerId);
+      setPage('seller-profile');
+    } else if (propertyId) {
+      setSelectedPropertyId(propertyId);
+      setPage('detail');
+    }
+  }, []);
+
   const handleSearchFocus = useCallback(() => {
     filtersRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
@@ -256,6 +274,7 @@ export function App() {
   const handleSelectProperty = (id: string) => {
     setSelectedPropertyId(id);
     setPage('detail');
+    window.history.pushState({}, '', `?property=${id}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -263,7 +282,15 @@ export function App() {
     setPage(target);
     if (target !== 'detail') {
       setSelectedPropertyId(null);
+      window.history.pushState({}, '', window.location.pathname);
     }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleViewSellerProfile = (sellerId: string) => {
+    setSelectedSellerId(sellerId);
+    setPage('seller-profile');
+    window.history.pushState({}, '', `?seller=${sellerId}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -273,6 +300,21 @@ export function App() {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+  };
+
+  const handleBecomeSeller = async () => {
+    if (!session?.user) return;
+    
+    const confirmed = confirm('Switch to Seller account? You\'ll be able to list properties and manage your listings.');
+    if (!confirmed) return;
+
+    await supabase
+      .from('profiles')
+      .update({ role: 'seller' })
+      .eq('id', session.user.id);
+    
+    setProfileRole('seller');
+    alert('✅ You\'re now a Seller! Check the menu for "My Listings" and "List Property"');
   };
 
   const openCreateListing = () => {
@@ -310,6 +352,27 @@ export function App() {
     }
   };
 
+  const handleDeleteProperty = async (propertyId: string) => {
+    try {
+      const { error } = await supabase
+        .from('properties')
+        .delete()
+        .eq('id', propertyId);
+
+      if (error) {
+        alert('Failed to delete property. Please try again.');
+        return;
+      }
+
+      // Remove from local list
+      setDbProperties(prev => prev.filter(p => p.id !== propertyId));
+      alert('Property deleted successfully.');
+    } catch (err) {
+      console.error('Error deleting property:', err);
+      alert('An error occurred while deleting the property.');
+    }
+  };
+
   const selectedProperty = allProperties.find((p) => p.id === selectedPropertyId);
 
   return (
@@ -322,6 +385,7 @@ export function App() {
         onSignIn={handleSignIn}
         onSignOut={handleSignOut}
         onListProperty={openCreateListing}
+        onBecomeSeller={handleBecomeSeller}
       />
 
       {page === 'home' ? (
@@ -472,12 +536,30 @@ export function App() {
       ) : page === 'my-listings' ? (
         <>
           <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 w-full py-10">
+            {/* Share Profile Banner for Sellers */}
+            {session?.user && isSeller && (
+              <div className="bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl p-6 text-white mb-8 shadow-xl">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-xl font-bold mb-1">📊 Your Seller Profile</h3>
+                    <p className="text-white/80 text-sm">Share your profile link with clients to showcase all your properties</p>
+                  </div>
+                  <button
+                    onClick={() => handleViewSellerProfile(session.user.id)}
+                    className="px-6 py-3 bg-white text-purple-600 rounded-xl font-medium hover:bg-gray-50 transition-colors shadow-lg whitespace-nowrap"
+                  >
+                    View My Profile Page
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
               <div>
                 <h2 className="text-3xl font-bold text-gray-900">My Listings</h2>
                 <p className="text-gray-500">Manage the properties you have listed.</p>
               </div>
-              {isSeller && (
+              {isApprovedSeller && (
                 <button
                   onClick={openCreateListing}
                   className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 transition-colors"
@@ -505,16 +587,29 @@ export function App() {
                       isSaved={savedPropertyIds.includes(property.id)}
                       onToggleSave={handleToggleSave}
                     />
-                    <button
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setEditingProperty(property);
-                        setIsListModalOpen(false);
-                      }}
-                      className="absolute top-4 right-4 px-3 py-1.5 bg-white/90 text-gray-700 text-xs font-semibold rounded-lg shadow-lg border border-gray-100 hover:bg-white"
-                    >
-                      Edit
-                    </button>
+                    <div className="absolute top-4 right-4 flex gap-2">
+                      <button
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setEditingProperty(property);
+                          setIsListModalOpen(false);
+                        }}
+                        className="px-3 py-1.5 bg-white/90 text-gray-700 text-xs font-semibold rounded-lg shadow-lg border border-gray-100 hover:bg-white"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (confirm('Are you sure you want to delete this property? This cannot be undone.')) {
+                            handleDeleteProperty(property.id);
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-red-100/90 text-red-700 text-xs font-semibold rounded-lg shadow-lg border border-red-200 hover:bg-red-100"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -527,8 +622,22 @@ export function App() {
 
           <Footer />
         </>
+      ) : page === 'seller-profile' && selectedSellerId ? (
+        <SellerProfile
+          sellerId={selectedSellerId}
+          onBack={() => {
+            setPage('home');
+            setSelectedSellerId(null);
+            window.history.pushState({}, '', window.location.pathname);
+          }}
+          onSelectProperty={handleSelectProperty}
+        />
       ) : page === 'detail' && selectedProperty ? (
-        <PropertyDetail property={selectedProperty} onBack={() => handleNavigate('home')} />
+        <PropertyDetail
+          property={selectedProperty}
+          onBack={() => handleNavigate('home')}
+          onViewSellerProfile={handleViewSellerProfile}
+        />
       ) : null}
 
       {session?.user && (

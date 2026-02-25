@@ -671,53 +671,55 @@ export function ListPropertyModal({
             </div>
 
             {panoramas.map((panorama, index) => (
-              <div key={`panorama-${index}`} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3">
-                <div className="space-y-2">
-                  <input
-                    value={panorama.label}
-                    onChange={(e) => updatePanorama(index, { label: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl"
-                    placeholder="Living Room"
-                  />
-                  {panorama.file && !panorama.label.trim() && (
-                    <p className="text-xs text-red-500">Add a label for this photo.</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <label
-                    htmlFor={`panorama-file-${index}`}
-                    className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
-                  >
-                    Choose 360 photo
-                  </label>
-                  <input
-                    id={`panorama-file-${index}`}
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => updatePanorama(index, { file: e.target.files?.[0] || null, url: undefined })}
-                    className="sr-only"
-                  />
-                  <p className="text-xs text-gray-500">
-                    {panorama.file?.name || (panorama.url ? 'Current photo' : 'No file selected')}
-                  </p>
-                  {panorama.label.trim() && !panorama.file && !panorama.url && (
-                    <p className="text-xs text-red-500">Select a photo for this label.</p>
-                  )}
-                  {previewUrls[index] && (
-                    <img
-                      src={previewUrls[index]}
-                      alt={panorama.label || `Preview ${index + 1}`}
-                      className="w-full h-28 object-cover rounded-xl border border-gray-100"
+              <div key={`panorama-${index}`} className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3">
+                  <div className="space-y-2">
+                    <input
+                      value={panorama.label}
+                      onChange={(e) => updatePanorama(index, { label: e.target.value })}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl"
+                      placeholder="Living Room"
                     />
-                  )}
+                    {panorama.file && !panorama.label.trim() && (
+                      <p className="text-xs text-red-500">Add a label for this photo.</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <label
+                      htmlFor={`panorama-file-${index}`}
+                      className="inline-flex items-center justify-center px-3 py-2 rounded-xl border border-gray-200 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer"
+                    >
+                      Choose 360 photo
+                    </label>
+                    <input
+                      id={`panorama-file-${index}`}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => updatePanorama(index, { file: e.target.files?.[0] || null, url: undefined })}
+                      className="sr-only"
+                    />
+                    <p className="text-xs text-gray-500">
+                      {panorama.file?.name || (panorama.url ? 'Current photo' : 'No file selected')}
+                    </p>
+                    {panorama.label.trim() && !panorama.file && !panorama.url && (
+                      <p className="text-xs text-red-500">Select a photo for this label.</p>
+                    )}
+                  </div>
+                  <div className="flex items-start justify-end">
+                    {panoramas.length > 1 && (
+                      <button type="button" onClick={() => removePanorama(index)} className="text-sm text-gray-500 hover:text-red-500 pt-2">
+                        Remove
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-start justify-end">
-                  {panoramas.length > 1 && (
-                    <button type="button" onClick={() => removePanorama(index)} className="text-sm text-gray-500 hover:text-red-500">
-                      Remove
-                    </button>
-                  )}
-                </div>
+                {previewUrls[index] && (
+                  <img
+                    src={previewUrls[index]}
+                    alt={panorama.label || `Preview ${index + 1}`}
+                    className="w-full h-28 object-cover rounded-xl border border-gray-100"
+                  />
+                )}
               </div>
             ))}
           </div>
