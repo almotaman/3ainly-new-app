@@ -5,6 +5,45 @@ interface PanoramaViewerProps {
   panoramas: { url: string; label: string }[];
 }
 
+let pannellumLoadPromise: Promise<void> | null = null;
+
+const loadPannellum = () => {
+  if ((window as any).pannellum) {
+    return Promise.resolve();
+  }
+
+  if (pannellumLoadPromise) {
+    return pannellumLoadPromise;
+  }
+
+  pannellumLoadPromise = new Promise<void>((resolve, reject) => {
+    const existingScript = document.querySelector<HTMLScriptElement>('script[data-pannellum="true"]');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(), { once: true });
+      existingScript.addEventListener('error', () => reject(new Error('Failed to load Pannellum')), { once: true });
+      return;
+    }
+
+    const existingStylesheet = document.querySelector<HTMLLinkElement>('link[data-pannellum="true"]');
+    if (!existingStylesheet) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css';
+      link.setAttribute('data-pannellum', 'true');
+      document.head.appendChild(link);
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js';
+    script.setAttribute('data-pannellum', 'true');
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load Pannellum'));
+    document.head.appendChild(script);
+  });
+
+  return pannellumLoadPromise;
+};
+
 // Real equirectangular 360° panorama images
 const REAL_360_PANORAMAS = [
   {
@@ -29,6 +68,7 @@ export function PanoramaViewer({ panoramas }: PanoramaViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<any>(null);
   const viewerContainerRef = useRef<HTMLDivElement>(null);
+  const preloadedImagesRef = useRef<Record<string, HTMLImageElement>>({});
 
   // Use real 360 panoramas for demo (falling back to sample panos if none provided)
   const activePanoramas = panoramas.length > 0 ? panoramas : REAL_360_PANORAMAS;
@@ -55,30 +95,6 @@ export function PanoramaViewer({ panoramas }: PanoramaViewerProps) {
     viewerDiv.style.width = '100%';
     viewerDiv.style.height = '100%';
     viewerContainerRef.current.appendChild(viewerDiv);
-
-    // Dynamically load Pannellum
-    const loadPannellum = () => {
-      return new Promise<void>((resolve, reject) => {
-        // Check if already loaded
-        if ((window as any).pannellum) {
-          resolve();
-          return;
-        }
-
-        // Load CSS
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = 'https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css';
-        document.head.appendChild(link);
-
-        // Load JS
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js';
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error('Failed to load Pannellum'));
-        document.head.appendChild(script);
-      });
-    };
 
     loadPannellum().then(() => {
       const pannellum = (window as any).pannellum;
@@ -119,6 +135,23 @@ export function PanoramaViewer({ panoramas }: PanoramaViewerProps) {
       setIsLoading(false);
     });
   }, [autoRotate]);
+
+  useEffect(() => {
+    if (activePanoramas.length <= 1) return;
+
+    const nextIndex = (activeIndex + 1) % activePanoramas.length;
+    const prevIndex = (activeIndex - 1 + activePanoramas.length) % activePanoramas.length;
+    const urlsToPreload = [activePanoramas[nextIndex].url, activePanoramas[prevIndex].url];
+
+    urlsToPreload.forEach((url) => {
+      if (preloadedImagesRef.current[url]) return;
+      const img = new Image();
+      img.decoding = 'async';
+      img.loading = 'eager';
+      img.src = url;
+      preloadedImagesRef.current[url] = img;
+    });
+  }, [activeIndex, activePanoramas]);
 
   useEffect(() => {
     initViewer(activeIndex);
@@ -275,10 +308,6 @@ export function PanoramaViewer({ panoramas }: PanoramaViewerProps) {
           <div className="bg-black/60 backdrop-blur-md text-white text-xs px-4 py-2 rounded-full flex items-center gap-3">
             <span className="flex items-center gap-1">
               <span className="text-lg">🖱️</span> Drag to look around
-            </span>
-            <span className="w-px h-4 bg-white/30"></span>
-            <span className="flex items-center gap-1">
-              <span className="text-lg">🔍</span> Scroll to zoom
             </span>
           </div>
         </div>

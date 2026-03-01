@@ -57,6 +57,11 @@ export function App() {
     [dbProperties, session]
   );
 
+  const closeListingModal = () => {
+    setIsListModalOpen(false);
+    setEditingProperty(null);
+  };
+
   useEffect(() => {
     let isMounted = true;
     supabase.auth.getSession().then(({ data }) => {
@@ -272,6 +277,7 @@ export function App() {
   }, [filters, sortBy, allProperties]);
 
   const handleSelectProperty = (id: string) => {
+    closeListingModal();
     setSelectedPropertyId(id);
     setPage('detail');
     window.history.pushState({}, '', `?property=${id}`);
@@ -279,6 +285,7 @@ export function App() {
   };
 
   const handleNavigate = (target: Page) => {
+    closeListingModal();
     setPage(target);
     if (target !== 'detail') {
       setSelectedPropertyId(null);
@@ -288,6 +295,7 @@ export function App() {
   };
 
   const handleViewSellerProfile = (sellerId: string) => {
+    closeListingModal();
     setSelectedSellerId(sellerId);
     setPage('seller-profile');
     window.history.pushState({}, '', `?seller=${sellerId}`);
@@ -644,10 +652,7 @@ export function App() {
         <ListPropertyModal
           isOpen={isListModalOpen || !!editingProperty}
           userId={session.user.id}
-          onClose={() => {
-            setIsListModalOpen(false);
-            setEditingProperty(null);
-          }}
+          onClose={closeListingModal}
           onCreated={(property) => setDbProperties((prev) => [property, ...prev])}
           onUpdated={(property) =>
             setDbProperties((prev) =>
